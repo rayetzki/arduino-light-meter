@@ -84,13 +84,13 @@ void renderMainScreen() {
   display.drawLine(124, 0, 125, 0, WHITE);
 
   // battery indicator for 4 elements of 1.5v each.
-  if (vcc > 540) {
+  if (vcc >= 460) {
     // full
     display.fillRect(123, 1, 4, 7, WHITE);
-  } else if (vcc > 480) {
+  } else if (vcc >= 440) {
     // medium
     display.fillRect(123, 4, 4, 5, WHITE);
-  } else if (vcc > 420) {
+  } else if (vcc >= 420) {
     // minimum
     display.fillRect(123, 6, 4, 3, WHITE);
   }
@@ -360,7 +360,6 @@ void render() {
       if (ISOIndex > MaxISOIndex) {
         ISOIndex = 0;
       }
-
       updateCurrentSettings();
       renderISOView();
     } else if (MinusButtonState == LOW) {
@@ -369,7 +368,6 @@ void render() {
       } else {
         ISOIndex = MaxISOIndex;
       }
-
       updateCurrentSettings();
       renderISOView();
     }
