@@ -15,10 +15,10 @@
 
 #define MeteringButtonPin           11
 #define PlusButtonPin               10
-#define MinusButtonPin              9
-#define ModeButtonPin               2
+#define MinusButtonPin              8
 #define MenuButtonPin               7
 #define MeteringModeButtonPin       6
+#define ModeButtonPin               2
 
 #define DefaultApertureIndex        12
 #define DefaultISOIndex             11
@@ -44,6 +44,8 @@ int ModeButtonState = HIGH;
 int MeteringButtonState = HIGH;
 int MeteringModeButtonState = HIGH;
 int MenuButtonState = HIGH;
+int PlusButtonState = HIGH;
+int MinusButtonState = HIGH;
 
 double lastBatteryTime = 0;
 int vcc;
@@ -219,6 +221,8 @@ void readButtons() {
   MeteringButtonState = digitalRead(MeteringButtonPin);
   MenuButtonState = digitalRead(MenuButtonPin);
   MeteringModeButtonState = digitalRead(MeteringModeButtonPin);
+  PlusButtonState = digitalRead(PlusButtonPin);
+  MinusButtonState = digitalRead(MinusButtonPin);
 }
 
 void renderISOView() {
@@ -227,7 +231,7 @@ void renderISOView() {
 
   display.clearDisplay();
   display.setTextSize(2);
-  display.setCursor(50, 4);
+  display.setCursor(50, 1);
   display.println(F("ISO"));
   display.setTextSize(3);
 
@@ -256,6 +260,44 @@ void render() {
   if (isMainScreen) {
     if (MenuButtonState == LOW) {
       renderISOView();
+    }
+    
+    if (PlusButtonState == LOW) {
+      if (modeIndex == 0) {
+        apertureIndex++;
+
+        if (apertureIndex > MaxApertureIndex) {
+          apertureIndex = 0;
+        }
+      } else if (modeIndex == 1) {
+        shutterSpeedIndex++;
+
+        if (shutterSpeedIndex > MaxShutterSpeedIndex) {
+          shutterSpeedIndex = 0;
+        }
+      }
+
+      updateCurrentSettings();
+      renderMainScreen();
+    }
+
+    if (MinusButtonState == LOW) {
+      if (modeIndex == 0) {
+        if (apertureIndex > 0) {
+          apertureIndex--;
+        } else {
+          apertureIndex = MaxApertureIndex;
+        }
+      } else if (modeIndex == 1) {
+        if (shutterSpeedIndex > 0) {
+          shutterSpeedIndex--;
+        } else {
+          shutterSpeedIndex = MaxShutterSpeedIndex;
+        }
+      }
+
+      updateCurrentSettings();
+      renderMainScreen();
     }
 
     if (ModeButtonState == LOW) {
@@ -310,6 +352,26 @@ void render() {
   } else if (isISOView) {
     if (MenuButtonState == LOW) {
       renderMainScreen();
+    }
+
+    if (PlusButtonState == LOW) {
+      ISOIndex++;
+
+      if (ISOIndex > MaxISOIndex) {
+        ISOIndex = 0;
+      }
+
+      updateCurrentSettings();
+      renderISOView();
+    } else if (MinusButtonState == LOW) {
+      if (ISOIndex > 0) {
+        ISOIndex--;
+      } else {
+        ISOIndex = MaxISOIndex;
+      }
+
+      updateCurrentSettings();
+      renderISOView();
     }
   }
   
