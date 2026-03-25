@@ -3,6 +3,7 @@
 #include <Adafruit_SSD1306.h>
 #include <BH1750.h>
 #include <EEPROM.h>
+
 #include <avr/sleep.h>
 #include "battery.h"
 #include "light_meter.h"
@@ -64,9 +65,18 @@ uint8_t meteringMode =      EEPROM.read(MeteringModeIndexAddr);
 bool isMainScreen = true;
 bool isISOView = false;
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); 
+
+void saveCurrentSettings() {
+  EEPROM.write(ISOIndexAddr, ISOIndex);
+  EEPROM.write(ApertureIndexAddr, apertureIndex);
+  EEPROM.write(ModeIndexAddr, modeIndex);
+  EEPROM.write(ShutterSpeedIndexAddr, apertureIndex);
+  EEPROM.write(MeteringModeIndexAddr, meteringMode);
+}
 
 void updateCurrentSettings() {
+  vcc = getCurrentVCC();
   EV = luxToEV(lux);
   iso = getISOByIndex(ISOIndex, MaxISOIndex);
   aperture = getApertureByIndex(apertureIndex, MaxApertureIndex);
@@ -278,6 +288,7 @@ void render() {
       }
 
       updateCurrentSettings();
+      saveCurrentSettings();
       renderMainScreen();
     }
 
@@ -297,11 +308,14 @@ void render() {
       }
 
       updateCurrentSettings();
+      saveCurrentSettings();
       renderMainScreen();
     }
 
     if (ModeButtonState == LOW) {
       modeIndex = modeIndex == 0 ? 1 : 0;
+      updateCurrentSettings();
+      saveCurrentSettings();
       renderMainScreen();
     }
 
@@ -309,6 +323,7 @@ void render() {
       lightMeter.configure(BH1750::ONE_TIME_HIGH_RES_MODE_2);
       lux = getCurrentLuxValue();
       updateCurrentSettings();
+      saveCurrentSettings();
       renderMainScreen();
     }
 
@@ -319,7 +334,8 @@ void render() {
       if (meteringMode == 0) {
         // Ambient light meter mode.
         lightMeter.configure(BH1750::ONE_TIME_HIGH_RES_MODE_2);
-        lux = getCurrentLuxValue();
+        updateCurrentSettings();
+        saveCurrentSettings();
         renderMainScreen();
         delay(200);
       } else if (meteringMode == 1) {
@@ -334,6 +350,7 @@ void render() {
           // check max flash metering time
           if (startTime + MaxFlashMeteringTime < millis()) {
             updateCurrentSettings();
+            saveCurrentSettings();
             break;
           }
 
@@ -361,6 +378,7 @@ void render() {
         ISOIndex = 0;
       }
       updateCurrentSettings();
+      saveCurrentSettings();
       renderISOView();
     } else if (MinusButtonState == LOW) {
       if (ISOIndex > 0) {
@@ -369,6 +387,7 @@ void render() {
         ISOIndex = MaxISOIndex;
       }
       updateCurrentSettings();
+      saveCurrentSettings();
       renderISOView();
     }
   }
@@ -405,8 +424,7 @@ void setup() {
 
   lightMeter.begin(BH1750::ONE_TIME_HIGH_RES_MODE_2);
   
-  vcc = getCurrentVCC();
-
+  updateCurrentSettings();
   renderMainScreen();
 }
 
