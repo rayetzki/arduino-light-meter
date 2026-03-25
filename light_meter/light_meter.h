@@ -5,7 +5,7 @@
 
 BH1750 lightMeter; // Address is 0x23
 
-volatile unsigned long lastInterruptTime = 0;
+unsigned long lastInterruptTime = 0;
 
 float getMinDistance(float x, float v1, float v2) {
   if (x - v1 > v2 - x) {
@@ -16,6 +16,7 @@ float getMinDistance(float x, float v1, float v2) {
 }
 
 float luxToEV(float lux) {
+  if (lux <= 0) return 0;
   return log(lux / 2.5) / log(2);
 }
 

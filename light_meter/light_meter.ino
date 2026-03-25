@@ -56,11 +56,11 @@ float aperture;
 float shutterSpeed;
 float EV;
 
-uint8_t ISOIndex =          EEPROM.read(ISOIndexAddr);
-uint8_t apertureIndex =     EEPROM.read(ApertureIndexAddr);
-uint8_t shutterSpeedIndex = EEPROM.read(ShutterSpeedIndexAddr);
-uint8_t modeIndex =         EEPROM.read(ModeIndexAddr);
-uint8_t meteringMode =      EEPROM.read(MeteringModeIndexAddr);
+uint8_t ISOIndex;
+uint8_t apertureIndex;
+uint8_t shutterSpeedIndex;
+uint8_t modeIndex;
+uint8_t meteringMode;
 
 bool isMainScreen = true;
 bool isISOView = false;
@@ -71,7 +71,7 @@ void saveCurrentSettings() {
   EEPROM.write(ISOIndexAddr, ISOIndex);
   EEPROM.write(ApertureIndexAddr, apertureIndex);
   EEPROM.write(ModeIndexAddr, modeIndex);
-  EEPROM.write(ShutterSpeedIndexAddr, apertureIndex);
+  EEPROM.write(ShutterSpeedIndexAddr, shutterSpeedIndex);
   EEPROM.write(MeteringModeIndexAddr, meteringMode);
 }
 
@@ -337,14 +337,13 @@ void render() {
         updateCurrentSettings();
         saveCurrentSettings();
         renderMainScreen();
-        delay(200);
       } else if (meteringMode == 1) {
         lux = 0;
         // Flash light metering
         lightMeter.configure(BH1750::CONTINUOUS_LOW_RES_MODE);
 
         unsigned long startTime = millis();
-        volatile uint16_t currentLux = 0;
+        uint16_t currentLux = 0;
 
         while (true) {
           // check max flash metering time
@@ -363,7 +362,6 @@ void render() {
         }
 
         renderMainScreen();
-        delay(200);
       }
     }
   } else if (isISOView) {
@@ -391,8 +389,8 @@ void render() {
       renderISOView();
     }
   }
-  
-  delay(200);
+
+  delay(120);
 }
 
 void setup() {
@@ -413,13 +411,19 @@ void setup() {
   }
 
   display.clearDisplay();
-  display.setTextSize(1);       // Normal 1:1 pixel scale
-  display.setTextColor(WHITE);  // Draw white text
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+
+  ISOIndex =          EEPROM.read(ISOIndexAddr);
+  apertureIndex =     EEPROM.read(ApertureIndexAddr);
+  shutterSpeedIndex = EEPROM.read(ShutterSpeedIndexAddr);
+  modeIndex =         EEPROM.read(ModeIndexAddr);
+  meteringMode =      EEPROM.read(MeteringModeIndexAddr);
 
   ISOIndex = ISOIndex > MaxISOIndex ? DefaultISOIndex : ISOIndex;
   apertureIndex = apertureIndex > MaxApertureIndex ? DefaultApertureIndex : apertureIndex;
   shutterSpeedIndex = shutterSpeedIndex > MaxShutterSpeedIndex ? DefaultShutterSpeedIndex : shutterSpeedIndex;
-  modeIndex = (modeIndex < 0 || modeIndex > 1) ? DefaultModeIndex : modeIndex;
+  modeIndex = modeIndex > 1 ? DefaultModeIndex : modeIndex;
   meteringMode = meteringMode > 1 ? 0 : meteringMode;
 
   lightMeter.begin(BH1750::ONE_TIME_HIGH_RES_MODE_2);
