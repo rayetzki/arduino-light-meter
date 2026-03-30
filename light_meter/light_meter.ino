@@ -65,6 +65,18 @@ uint8_t meteringMode;
 bool isMainScreen = true;
 bool isISOView = false;
 
+bool flashMeteringActive = false;
+unsigned long flashMeteringStartTime = 0;
+unsigned long flashMeteringLastSampleTime = 0;
+float flashMeteringMaxLux = 0;
+
+int lastModeButtonState = HIGH;
+int lastMeteringButtonState = HIGH;
+int lastMeteringModeButtonState = HIGH;
+int lastMenuButtonState = HIGH;
+int lastPlusButtonState = HIGH;
+int lastMinusButtonState = HIGH;
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); 
 
 void saveCurrentSettings() {
@@ -226,6 +238,45 @@ void renderMainScreen() {
   display.display();
 }
 
+bool buttonPressed(int currentState, int previousState) {
+  return currentState == LOW && previousState == HIGH;
+}
+
+void startFlashMetering() {
+  lux = 0;
+  flashMeteringMaxLux = 0;
+  flashMeteringStartTime = millis();
+  flashMeteringLastSampleTime = 0;
+  flashMeteringActive = true;
+  lightMeter.configure(BH1750::CONTINUOUS_LOW_RES_MODE);
+}
+
+void processFlashMetering() {
+  if (!flashMeteringActive) {
+    return;
+  }
+
+  unsigned long now = millis();
+
+  if (flashMeteringLastSampleTime == 0 || now - flashMeteringLastSampleTime >= 200) {
+    flashMeteringLastSampleTime = now;
+    float currentLux = getCurrentLuxValue();
+
+    if (currentLux > flashMeteringMaxLux) {
+      flashMeteringMaxLux = currentLux;
+      lux = currentLux;
+    }
+  }
+
+  if (now - flashMeteringStartTime >= MaxFlashMeteringTime) {
+    flashMeteringActive = false;
+    lux = flashMeteringMaxLux;
+    updateCurrentSettings();
+    saveCurrentSettings();
+    renderMainScreen();
+  }
+}
+
 void readButtons() {
   ModeButtonState = digitalRead(ModeButtonPin);
   MeteringButtonState = digitalRead(MeteringButtonPin);
@@ -268,11 +319,11 @@ void renderISOView() {
 
 void render() {
   if (isMainScreen) {
-    if (MenuButtonState == LOW) {
+    if (buttonPressed(MenuButtonState, lastMenuButtonState)) {
       renderISOView();
     }
     
-    if (PlusButtonState == LOW) {
+    if (buttonPressed(PlusButtonState, lastPlusButtonState)) {
       if (modeIndex == 0) {
         apertureIndex++;
 
@@ -292,7 +343,7 @@ void render() {
       renderMainScreen();
     }
 
-    if (MinusButtonState == LOW) {
+    if (buttonPressed(MinusButtonState, lastMinusButtonState)) {
       if (modeIndex == 0) {
         if (apertureIndex > 0) {
           apertureIndex--;
@@ -312,14 +363,14 @@ void render() {
       renderMainScreen();
     }
 
-    if (ModeButtonState == LOW) {
+    if (buttonPressed(ModeButtonState, lastModeButtonState)) {
       modeIndex = modeIndex == 0 ? 1 : 0;
       updateCurrentSettings();
       saveCurrentSettings();
       renderMainScreen();
     }
 
-    if (MeteringButtonState == LOW) {
+    if (buttonPressed(MeteringButtonState, lastMeteringButtonState)) {
       lightMeter.configure(BH1750::ONE_TIME_HIGH_RES_MODE_2);
       lux = getCurrentLuxValue();
       updateCurrentSettings();
@@ -327,7 +378,7 @@ void render() {
       renderMainScreen();
     }
 
-    if (MeteringModeButtonState == LOW) {
+    if (buttonPressed(MeteringModeButtonState, lastMeteringModeButtonState)) {
       meteringMode = meteringMode == 0 ? 1 : 0;
       renderMainScreen();
 
@@ -338,38 +389,15 @@ void render() {
         saveCurrentSettings();
         renderMainScreen();
       } else if (meteringMode == 1) {
-        lux = 0;
-        // Flash light metering
-        lightMeter.configure(BH1750::CONTINUOUS_LOW_RES_MODE);
-
-        unsigned long startTime = millis();
-        uint16_t currentLux = 0;
-
-        while (true) {
-          // check max flash metering time
-          if (startTime + MaxFlashMeteringTime < millis()) {
-            updateCurrentSettings();
-            saveCurrentSettings();
-            break;
-          }
-
-          currentLux = getCurrentLuxValue();
-          delay(16);
-
-          if (currentLux > lux) {
-            lux = currentLux;
-          }
-        }
-
-        renderMainScreen();
+        startFlashMetering();
       }
     }
   } else if (isISOView) {
-    if (MenuButtonState == LOW) {
+    if (buttonPressed(MenuButtonState, lastMenuButtonState)) {
       renderMainScreen();
     }
 
-    if (PlusButtonState == LOW) {
+    if (buttonPressed(PlusButtonState, lastPlusButtonState)) {
       ISOIndex++;
 
       if (ISOIndex > MaxISOIndex) {
@@ -378,7 +406,7 @@ void render() {
       updateCurrentSettings();
       saveCurrentSettings();
       renderISOView();
-    } else if (MinusButtonState == LOW) {
+    } else if (buttonPressed(MinusButtonState, lastMinusButtonState)) {
       if (ISOIndex > 0) {
         ISOIndex--;
       } else {
@@ -439,6 +467,14 @@ void loop() {
   }
 
   readButtons();
+  processFlashMetering();
 
   render();
+
+  lastModeButtonState = ModeButtonState;
+  lastMeteringButtonState = MeteringButtonState;
+  lastMeteringModeButtonState = MeteringModeButtonState;
+  lastMenuButtonState = MenuButtonState;
+  lastPlusButtonState = PlusButtonState;
+  lastMinusButtonState = MinusButtonState;
 }

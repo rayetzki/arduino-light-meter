@@ -24,7 +24,7 @@ float getCurrentLuxValue() {
   unsigned long interruptTime = millis();
   
   if (interruptTime - lastInterruptTime < 120) {
-    return;
+    return 0;
   }
 
   delay(180);
